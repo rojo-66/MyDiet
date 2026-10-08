@@ -11,10 +11,10 @@ File:
 
 ## Pubblicare su GitHub Pages
 
-1. Su github.com crea un nuovo repository, per esempio `dieta`, impostato come **Public**.
+1. Su github.com crea un nuovo repository, per esempio `MyDiet`, impostato come **Public**.
 2. Nella pagina del repository scegli **uploading an existing file**, trascina tutti i file di questa cartella e conferma con **Commit changes**.
 3. Vai in **Settings → Pages**. In **Source** scegli **Deploy from a branch**, poi branch **main** e cartella **/ (root)**, e salva.
-4. Dopo uno o due minuti l'app è online su `https://TUO-NOME.github.io/dieta/`.
+4. Dopo uno o due minuti l'app è online su `https://rojo-66.github.io/MyDiet/`.
 
 ## Installarla sull'iPhone
 

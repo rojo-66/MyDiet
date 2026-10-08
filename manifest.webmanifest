@@ -1,0 +1,13 @@
+{
+  "name": "Dieta e spesa",
+  "short_name": "Dieta",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E1E4E1",
+  "theme_color": "#E1E4E1",
+  "icons": [
+    { "src": "icona.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

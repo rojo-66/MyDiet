@@ -139,10 +139,46 @@ table.ing { width: 100%; border-collapse: collapse; font-variant-numeric: tabula
 .stepdet { padding: 2px 0 14px; }
 .stepdet .btn { margin-top: 10px; }
 
+/* ---------- Settimana e scorrimento tra i giorni ---------- */
+.week {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+  margin: -14px -16px 0; padding: 10px 16px 10px; background: var(--bg);
+}
+.week::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: env(safe-area-inset-top, 0px); background: var(--bg); }
+.week .in { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.week button {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-height: 58px; padding: 7px 0 11px; border: 1px solid transparent; border-radius: 6px;
+  background: none; color: var(--ink-2);
+}
+.week .wd { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+.week .wn { font: 600 22px/1 var(--cond); font-variant-numeric: tabular-nums; color: var(--ink); }
+.week button.prima .wn { color: var(--ink-3); }
+.week button.oggi { border-color: var(--accent); color: var(--accent); }
+.week button.oggi .wn { color: var(--accent); }
+.week button.oggi::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: currentColor; }
+.week button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.week button[aria-pressed="true"] .wn { color: var(--bg); }
+.week button.oggi[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.week button.oggi[aria-pressed="true"] .wn { color: var(--accent-ink); }
+.dayclip { overflow: hidden; margin: 0 -16px; padding: 0 16px; touch-action: pan-y; touch-action: pan-y pinch-zoom; }
+.daypane { position: relative; }
+.meals { display: grid; gap: 12px; }
+.meal { padding: 14px 16px 10px; border-left: 6px solid var(--line); }
+.meal.fatto { border-left-color: var(--done); }
+.mhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.meal .slot { color: var(--ink-2); }
+.mstat { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.meal.fatto .mstat { color: var(--done); font-weight: 600; }
+.mdish { font: 700 26px/1.05 var(--cond); margin: 3px 0 8px; }
+.meal.saltato .mdish { color: var(--ink-2); }
+.meal .window { margin: 0 0 10px; }
+
 @media (min-width: 900px) {
   #view-dieta { max-width: 1060px; }
   .dieta-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 36px; align-items: start; }
   .seq h2 { margin-top: 0; }
+  .meals { grid-template-columns: 1fr 1fr; align-items: start; }
 }
 
 /* ---------- Pulsanti generici ---------- */
@@ -342,6 +378,8 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const pad = (n) => String(n).padStart(2, '0');
 const idxGiorno = (date) => (date.getDay() + 6) % 7;
+/* Data del giorno i (0 = lunedì) della settimana che contiene date */
+const dataGiorno = (date, i) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - idxGiorno(date) + i, 12);
 const chiaveData = (date) => date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
 const hhmm = (date) => pad(date.getHours()) + ':' + pad(date.getMinutes());
 const minuti = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
@@ -364,6 +402,7 @@ const LS = {
 const S = { dieta: null, pasti: { ts: 0, giorni: {} }, spesa: { ts: 0, presi: {} } };
 const ui = {
   tab: 'dieta', aperto: null, bozza: null, dirty: false, gEdit: idxGiorno(new Date()),
+  vista: idxGiorno(new Date()), vistaDa: chiaveData(new Date()),
   armReset: false, importErr: '', importPronto: null, firma: '',
 };
 
@@ -535,7 +574,8 @@ function righeIngredienti(dieta, items) {
     return '<tr><td>' + esc(pr.nome) + '</td><td>' + fmtQ(it.q, pr.unita) + '</td></tr>';
   }).join('');
 }
-function tabellaDoppia(dieta, d, big) {
+function tabellaDoppia(dieta, d, big, titoli) {
+  const [tc, tp] = titoli || ['Stasera', 'Domani'];
   const cena = pasto(dieta, d, 'cena');
   const pranzo = pasto(dieta, (d + 1) % 7, 'pranzo');
   const qp = {};
@@ -549,7 +589,7 @@ function tabellaDoppia(dieta, d, big) {
     const a = qc[p] || 0, b = qp[p] || 0;
     return '<tr><td>' + esc(pr.nome) + '</td><td>' + (a ? fmtQ(a, pr.unita) : '\u2013') + '</td><td>' + (b ? fmtQ(b, pr.unita) : '\u2013') + '</td><td class="tot">' + fmtQ(a + b, pr.unita) + '</td></tr>';
   }).join('');
-  return '<table class="ing' + (big ? ' big' : '') + '"><thead><tr><th>Ingrediente</th><th>Stasera</th><th>Domani</th><th>Totale</th></tr></thead><tbody>' + righe + '</tbody></table>';
+  return '<table class="ing' + (big ? ' big' : '') + '"><thead><tr><th>Ingrediente</th><th>' + tc + '</th><th>' + tp + '</th><th>Totale</th></tr></thead><tbody>' + righe + '</tbody></table>';
 }
 function tabellaSingola(dieta, p, big) {
   return '<table class="ing' + (big ? ' big' : '') + '"><tbody>' + righeIngredienti(dieta, p.items) + '</tbody></table>';
@@ -559,10 +599,54 @@ function renderDieta() {
   const el = $('#view-dieta');
   const now = new Date();
   if (!S.dieta) { mostra('benvenuto'); return; }
+  const oggi = idxGiorno(now), oggiKey = chiaveData(now);
+  // A mezzanotte (o riaprendo l'app un altro giorno) si torna sempre a oggi
+  if (ui.vistaDa !== oggiKey) { ui.vista = oggi; ui.vistaDa = oggiKey; }
+  const corpo = ui.vista === oggi ? corpoOggi(now) : corpoGiorno(now, ui.vista);
+  el.innerHTML = barraSettimana(now) + '<div class="dayclip"><div class="daypane" id="daypane">' + corpo + '</div></div>';
+  ui.firma = firmaDieta(now);
+}
+function barraSettimana(now) {
+  const oggi = idxGiorno(now);
+  const btn = GBREVI.map((n, i) => {
+    const dt = dataGiorno(now, i);
+    const cls = i === oggi ? 'oggi' : i < oggi ? 'prima' : '';
+    return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-action="vedi" data-d="' + i + '" aria-pressed="' + (i === ui.vista) + '"' +
+      (i === oggi ? ' aria-current="date"' : '') + ' aria-label="' + GIORNI[i] + ' ' + fmtData(dt) + (i === oggi ? ', oggi' : '') + '">' +
+      '<span class="wd">' + n + '</span><span class="wn">' + dt.getDate() + '</span></button>';
+  }).join('');
+  return '<nav class="week" aria-label="Giorni della settimana"><div class="in">' + btn + '</div></nav>';
+}
+/* Un giorno diverso da oggi: tutti i pasti, con quelli segnati se il giorno è passato */
+function corpoGiorno(now, d) {
+  const dieta = S.dieta, g = dieta.giorni[d], oggi = idxGiorno(now);
+  const dt = dataGiorno(now, d), key = chiaveData(dt), passato = d < oggi;
+  const rel = d === oggi - 1 ? 'Ieri, ' : d === oggi + 1 ? 'Domani, ' : '';
+  const cards = SLOTS.filter((s) => pieno(pasto(dieta, d, s))).map((s) => {
+    const p = pasto(dieta, d, s), fa = fattoAlle(key, s);
+    const doppiaCena = s === 'cena' && isCenaDoppia(d);
+    let cls = 'card meal', stato;
+    if (fa) { cls += ' fatto'; stato = ICON_CHECK + (SLOT_FEMM[s] ? 'Fatta' : 'Fatto') + ' alle ' + fa; }
+    else if (passato) { cls += ' saltato'; stato = 'Non segnato'; }
+    else stato = p.abilita + '–' + p.fine;
+    let nota = '';
+    if (doppiaCena) nota = 'Prepara anche il pranzo di ' + GIORNI[(d + 1) % 7].toLowerCase() + '.';
+    else if (s === 'pranzo' && isPranzoDoppio(d)) nota = 'Si prepara con la cena di ' + GIORNI[(d + 6) % 7].toLowerCase() + '.';
+    return '<section class="' + cls + '"><div class="mhead"><p class="slot">' + SLOT_NOME[s] + '</p><p class="mstat">' + stato + '</p></div>' +
+      '<h3 class="mdish">' + esc(p.nome || SLOT_NOME[s]) + '</h3>' +
+      (nota ? '<p class="window">' + nota + '</p>' : '') +
+      (doppiaCena ? tabellaDoppia(dieta, d, false, ['Cena', 'Pranzo']) : tabellaSingola(dieta, p, false)) +
+      '</section>';
+  }).join('');
+  return '<header class="top"><div><h1>' + GIORNI[d] + '</h1><p class="sub">' + rel + fmtData(dt) + '</p></div>' +
+      '<button class="btn small" data-action="vedi" data-d="' + oggi + '">Oggi</button></header>' +
+    (g.nota ? '<p class="nota">' + esc(g.nota) + '</p>' : '<div style="height:18px"></div>') +
+    (cards ? '<div class="meals">' + cards + '</div>' : '<div class="empty"><h2>Nessun pasto</h2><p>In questo giorno tutti i pasti hanno quantità a zero.</p></div>');
+}
+function corpoOggi(now) {
   const cur = calcolaCorrente(now);
   if (!cur) {
-    el.innerHTML = '<div class="empty"><h2>La dieta non ha pasti</h2><p>Tutti i pasti hanno quantità a zero. Controllala dalla modifica.</p><button class="btn accent" data-action="vai" data-tab="opzioni">Vai alle opzioni</button></div>';
-    return;
+    return '<div class="empty"><h2>La dieta non ha pasti</h2><p>Tutti i pasti hanno quantità a zero. Controllala dalla modifica.</p><button class="btn accent" data-action="vai" data-tab="opzioni">Vai alle opzioni</button></div>';
   }
   const dieta = S.dieta, g = dieta.giorni[cur.d], p = pasto(dieta, cur.d, cur.s);
   const doppiaCena = cur.s === 'cena' && isCenaDoppia(cur.d);
@@ -612,14 +696,12 @@ function renderDieta() {
 
   const titolo = GIORNI[cur.d];
   const sub = (cur.domani ? 'Domani, ' : 'Oggi, ') + fmtData(cur.data);
-  el.innerHTML =
-    '<header class="top"><div><h1>' + titolo + '</h1><p class="sub">' + sub + '</p></div><div class="clock" aria-label="Ora attuale">' + hhmm(now) + '</div></header>' +
+  return '<header class="top"><div><h1>' + titolo + '</h1><p class="sub">' + sub + '</p></div><div class="clock" aria-label="Ora attuale">' + hhmm(now) + '</div></header>' +
     (g.nota ? '<p class="nota">' + esc(g.nota) + '</p>' : '<div style="height:18px"></div>') +
     '<div class="dieta-grid"><div>' + card + '</div>' +
     '<section class="seq"><h2>' + (cur.domani ? 'La giornata di domani' : 'La giornata') + '</h2>' +
     '<p class="lead">Ogni pasto resta a schermo fino all\u2019orario sulla linea, oppure finché non lo segni come fatto.</p>' +
     '<ol class="steps">' + seq + '</ol></section></div>';
-  ui.firma = firmaDieta(now);
 }
 function firmaDieta(now) { return hhmm(now) + '|' + (S.dieta ? S.dieta.ts : 0) + '|' + S.pasti.ts; }
 
@@ -852,6 +934,7 @@ const azioni = {
     ui.aperto = null; renderDieta();
   },
   apri(el) { const s = el.dataset.s; ui.aperto = ui.aperto === s ? null : s; renderDieta(); },
+  vedi(el) { vediGiorno(+el.dataset.d, 0, !!el.closest('.week')); },
   spunta(el) {
     const p = el.dataset.p;
     if (S.spesa.presi[p]) delete S.spesa.presi[p]; else S.spesa.presi[p] = true;
@@ -1054,18 +1137,107 @@ async function avviaEsporta() {
   esportato(nome, null);
 }
 
+/* ================= Scorrimento tra i giorni ================= */
+/* Il contenuto del giorno segue il dito; superata la soglia esce di lato ed entra il giorno accanto. */
+const swipe = { stato: null, id: null, x0: 0, y0: 0, t0: 0, dx: 0, w: 0, pane: null, anim: false, fineT: 0 };
+const conMoto = () => !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+function scivola(el, x, ms, done) {
+  el.style.transition = 'transform ' + ms + 'ms cubic-bezier(.22,.7,.3,1)';
+  el.style.transform = 'translateX(' + x + 'px)';
+  setTimeout(done, ms + 20);
+}
+/* dir: 1 = giorno dopo (entra da destra), -1 = giorno prima; 0 = la calcola da sé */
+function vediGiorno(d, dir, focusSett) {
+  if (d < 0 || d > 6 || swipe.anim) return;
+  const pane = $('#daypane');
+  if (d === ui.vista) {
+    if (pane && pane.style.transform) { swipe.anim = true; scivola(pane, 0, 180, () => { pane.style.cssText = ''; swipe.anim = false; }); }
+    return;
+  }
+  dir = dir || (d > ui.vista ? 1 : -1);
+  const cambia = () => {
+    ui.vista = d; ui.aperto = null;
+    renderDieta();
+    if (window.scrollY > 0) window.scrollTo(0, 0);
+    if (focusSett) { const b = $('.week button[data-d="' + d + '"]'); if (b) b.focus({ preventScroll: true }); }
+  };
+  if (!pane || !conMoto()) { cambia(); return; }
+  swipe.anim = true;
+  const w = pane.offsetWidth + 24;
+  scivola(pane, -dir * w, 170, () => {
+    cambia();
+    const nuovo = $('#daypane');
+    nuovo.style.transition = 'none';
+    nuovo.style.transform = 'translateX(' + (dir * w) + 'px)';
+    void nuovo.offsetWidth;
+    scivola(nuovo, 0, 230, () => { nuovo.style.cssText = ''; swipe.anim = false; });
+  });
+}
+(() => {
+  const vd = $('#view-dieta');
+  vd.addEventListener('pointerdown', (ev) => {
+    if (ev.pointerType === 'mouse' || !ev.isPrimary || swipe.anim) return;
+    const pane = ev.target.closest('.daypane');
+    if (!pane) return;
+    Object.assign(swipe, { stato: 'forse', id: ev.pointerId, x0: ev.clientX, y0: ev.clientY, t0: ev.timeStamp, dx: 0, pane, w: pane.offsetWidth });
+  });
+  vd.addEventListener('pointermove', (ev) => {
+    if (!swipe.stato || ev.pointerId !== swipe.id) return;
+    const dx = ev.clientX - swipe.x0, dy = ev.clientY - swipe.y0;
+    if (swipe.stato === 'forse') {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.2) { swipe.stato = null; return; }
+      swipe.stato = 'trascina';
+      swipe.pane.style.transition = 'none';
+      try { vd.setPointerCapture(ev.pointerId); } catch (e) { /* non supportato */ }
+    }
+    // Oltre lunedì e domenica il contenuto fa resistenza
+    const bordo = (dx > 0 && ui.vista === 0) || (dx < 0 && ui.vista === 6);
+    swipe.dx = bordo ? dx / 3 : dx;
+    swipe.pane.style.transform = 'translateX(' + swipe.dx + 'px)';
+  });
+  const fine = (ev) => {
+    if (!swipe.stato || ev.pointerId !== swipe.id) return;
+    const era = swipe.stato;
+    swipe.stato = null;
+    if (era !== 'trascina') return;
+    swipe.fineT = performance.now();
+    const dx = swipe.dx, v = dx / Math.max(1, ev.timeStamp - swipe.t0);
+    const dir = dx < 0 ? 1 : -1, d = ui.vista + dir;
+    const passa = ev.type === 'pointerup' && d >= 0 && d <= 6 &&
+      (Math.abs(dx) > swipe.w * 0.25 || (Math.abs(v) > 0.4 && Math.abs(dx) > 30));
+    vediGiorno(passa ? d : ui.vista, dir);
+  };
+  vd.addEventListener('pointerup', fine);
+  vd.addEventListener('pointercancel', fine);
+  // Dopo un trascinamento non deve partire il tocco sul pulsante sotto il dito
+  vd.addEventListener('click', (ev) => { if (performance.now() - swipe.fineT < 400) { ev.stopPropagation(); ev.preventDefault(); } }, true);
+})();
+
 /* ================= Eventi ================= */
 document.addEventListener('click', (ev) => {
   const bg = $('#sheet');
   if (ev.target === bg) { chiudiSheet(); return; }
   const tabBtn = ev.target.closest('.tabbar button[data-tab]');
-  if (tabBtn) { if (ui.tab !== tabBtn.dataset.tab) mostra(tabBtn.dataset.tab); return; }
+  if (tabBtn) {
+    if (ui.tab !== tabBtn.dataset.tab) mostra(tabBtn.dataset.tab);
+    else if (ui.tab === 'dieta' && S.dieta) vediGiorno(idxGiorno(new Date()));
+    return;
+  }
   const el = ev.target.closest('[data-action]');
   if (!el || el.disabled) return;
   const fn = azioni[el.dataset.action];
   if (fn) { if (el.dataset.action === 'conferma-import') { chiudiSheetCb = null; } fn(el); }
 });
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('#sheet').hidden) chiudiSheet(); });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && !$('#sheet').hidden) { chiudiSheet(); return; }
+  const t = ev.target instanceof Element ? ev.target : document.body;
+  if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && ui.tab === 'dieta' && S.dieta && $('#sheet').hidden &&
+      !ev.altKey && !ev.ctrlKey && !ev.metaKey && !t.closest('input, textarea')) {
+    const dir = ev.key === 'ArrowRight' ? 1 : -1;
+    vediGiorno(ui.vista + dir, dir, !!t.closest('.week'));
+  }
+});
 document.addEventListener('input', (ev) => {
   const t = ev.target;
   if (!ui.bozza) return;
@@ -1099,7 +1271,7 @@ $('#filein').addEventListener('change', (ev) => {
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') render(); });
 setInterval(() => {
-  if (ui.tab !== 'dieta' || document.visibilityState !== 'visible') return;
+  if (ui.tab !== 'dieta' || document.visibilityState !== 'visible' || swipe.anim || swipe.stato) return;
   if (firmaDieta(new Date()) !== ui.firma) renderDieta();
 }, 10000);
 

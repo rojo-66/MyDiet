@@ -1,6 +1,6 @@
-# Dieta e spesa
+# Dieta
 
-App web per vedere il pasto del momento e la lista della spesa della settimana. Funziona su iPhone, tablet e computer, anche senza connessione. La dieta resta solo sul dispositivo: questo repository contiene l'app, non i tuoi dati.
+App web per vedere la cena di ogni giorno della settimana. Da domenica a giovedì la cena comprende anche il pranzo del giorno dopo, con le quantità da cucinare. Un interruttore sceglie tra **cena post allenamento** e **cena senza allenamento**. Funziona su iPhone, tablet e computer, anche senza connessione. La dieta resta solo sul dispositivo: questo repository contiene l'app, non i tuoi dati.
 
 File:
 
@@ -8,6 +8,16 @@ File:
 - `manifest.webmanifest`: nome e icona per l'installazione
 - `sw.js`: copia locale per l'uso offline
 - `icona.png`: l'icona della schermata Home
+
+## Il file della dieta
+
+L'app importa un file `.json` nel formato 3 di Healthy App (`schemaVersion: 3`). Usa solo:
+
+- `products`: nome e unità (`g`, `ml`, `pz`) di ogni alimento;
+- `days`: 7 giorni (`weekday` da 1 = lunedì a 7 = domenica), con `defaultType` e le varianti `gym` (post allenamento) e `rest` (senza allenamento). Di ogni variante legge la `cena`, il `pranzo` e la `note`; le varianti `run` vengono ignorate;
+- `recipes`: le ricette collegate alla cena o al pranzo.
+
+L'interruttore parte dal `defaultType` del giorno (`gym` = post allenamento, tutto il resto = senza allenamento). Le scelte fatte valgono per la settimana in corso e il lunedì si azzerano. Se un giorno ha una sola variante, l'interruttore resta bloccato su quella.
 
 ## Pubblicare su GitHub Pages
 
@@ -20,13 +30,13 @@ File:
 
 1. Apri l'indirizzo in **Safari**.
 2. Tocca **Condividi → Aggiungi alla schermata Home**. Se compare l'opzione **Apri come app web**, lasciala attiva.
-3. Apri l'app **dall'icona** e importa lì il file della dieta. Safari e l'app sulla Home hanno memorie separate: quello che importi in Safari non si vede nell'app.
+3. Apri l'app **dall'icona** e importa lì il file della dieta (**Impostazioni → Importa dieta**). Safari e l'app sulla Home hanno memorie separate: quello che importi in Safari non si vede nell'app.
 
 ## Cambiare l'icona
 
 1. Prepara un'immagine PNG quadrata, almeno 512 × 512 pixel, senza angoli arrotondati (li aggiunge iOS).
 2. Chiamala `icona.png` e caricala nel repository al posto di quella attuale.
-3. iOS salva l'icona quando la aggiungi alla Home, quindi va reinstallata. **Prima esporta la dieta**: eliminando l'icona dalla Home, iOS cancella anche i dati dell'app. Poi elimina l'icona, aggiungila di nuovo da Safari e reimporta il file.
+3. iOS salva l'icona quando la aggiungi alla Home, quindi va reinstallata: elimina l'icona, aggiungila di nuovo da Safari e reimporta il file della dieta (eliminando l'icona, iOS cancella anche i dati dell'app).
 
 ## Aggiornare l'app
 

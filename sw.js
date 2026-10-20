@@ -1,6 +1,6 @@
-// Dieta e spesa: copia locale dei file dell'app per aprirla anche senza connessione.
+// Dieta: copia locale dei file dell'app per aprirla anche senza connessione.
 // Prima prova la rete (così gli aggiornamenti arrivano subito), poi la copia salvata.
-const CACHE = 'dieta-e-spesa-v1';
+const CACHE = 'dieta-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icona.png'];
 
 self.addEventListener('install', (e) => {
